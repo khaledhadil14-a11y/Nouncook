@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2e7d5b">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>وجباتي الأسبوعية</title>
+<style>
+:root{
+  --green:#2e7d5b; --green-d:#1f5c42; --green-l:#e3f2ea;
+  --bg:#f6f7f4; --card:#fff; --text:#1d2a24; --muted:#6b7a72;
+  --line:#e2e6e1; --warn:#c0392b; --gold:#e8a33d;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:"Segoe UI",Tahoma,"Noto Naskh Arabic","Noto Sans Arabic",Arial,sans-serif;font-size:16px}
+body{padding-bottom:84px;min-height:100vh}
+header{background:var(--green);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 16px 14px;
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:10px}
+header h1{font-size:19px;margin:0;font-weight:700}
+header .sub{font-size:12px;opacity:.85}
+.btn{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:600;cursor:pointer;background:var(--green);color:#fff}
+.btn.light{background:rgba(255,255,255,.18);color:#fff}
+.btn.ghost{background:var(--green-l);color:var(--green-d)}
+.btn.danger{background:#fdecea;color:var(--warn)}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:9px}
+.btn:active{transform:scale(.97)}
+main{padding:12px 12px 0;max-width:720px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+
+/* Week */
+.day{background:var(--card);border-radius:16px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.day.today{outline:2px solid var(--gold)}
+.day-h{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--green-l);
+  font-weight:700;color:var(--green-d)}
+.day-h .tag{font-size:11px;background:var(--gold);color:#fff;border-radius:20px;padding:2px 8px;font-weight:600}
+.slot{display:flex;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer}
+.slot:active{background:#f1f5f2}
+.slot .ico{font-size:22px;width:30px;text-align:center}
+.slot .info{flex:1;min-width:0}
+.slot .lbl{font-size:12px;color:var(--muted)}
+.slot .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.slot .nm.empty{color:var(--muted);font-weight:400}
+.slot .lock{font-size:15px;opacity:.9}
+.slot .dice{border:0;background:transparent;font-size:20px;padding:6px;cursor:pointer}
+
+/* Shopping */
+.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card h3{margin:0 0 8px;font-size:16px}
+.shop-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.shop-item:last-child{border-bottom:0}
+.shop-item input{width:22px;height:22px;accent-color:var(--green)}
+.shop-item.done span{text-decoration:line-through;color:var(--muted)}
+.shop-item .cnt{margin-inline-start:auto;font-size:12px;background:var(--green-l);color:var(--green-d);border-radius:20px;padding:2px 9px}
+.empty-note{text-align:center;color:var(--muted);padding:30px 10px}
+
+/* Settings */
+label.row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+label.row:last-child{border-bottom:0}
+.stepper{display:flex;align-items:center;gap:12px}
+.stepper button{width:34px;height:34px;border-radius:50%;border:0;background:var(--green-l);color:var(--green-d);font-size:20px;font-weight:700}
+.stepper b{min-width:22px;text-align:center}
+input[type=checkbox].sw{width:22px;height:22px;accent-color:var(--green)}
+input[type=text]{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px}
+textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px;min-height:64px}
+select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px}
+.custom-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);gap:8px}
+.custom-item:last-child{border-bottom:0}
+
+/* Bottom nav */
+nav{position:fixed;bottom:0;inset-inline:0;background:#fff;border-top:1px solid var(--line);display:flex;
+  padding-bottom:env(safe-area-inset-bottom);z-index:30}
+nav button{flex:1;border:0;background:transparent;padding:10px 4px 9px;font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+nav button .i{display:block;font-size:22px;margin-bottom:2px}
+nav button.active{color:var(--green);font-weight:700}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;width:100%;max-width:720px;max-height:86vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom)}
+.modal-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.modal-h h2{margin:0;font-size:17px}
+.modal-h .x{border:0;background:transparent;font-size:24px;cursor:pointer;color:var(--muted)}
+.modal-b{overflow:auto;padding:10px 16px 16px}
+.opt{display:flex;align-items:center;justify-content:space-between;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.opt:active{background:#f1f5f2}
+.opt small{color:var(--muted)}
+.row-btns{display:flex;gap:8px;margin:10px 0;flex-wrap:wrap}
+.toast{position:fixed;bottom:96px;inset-inline:0;margin:auto;width:max-content;max-width:90%;background:#1d2a24;color:#fff;
+  padding:10px 16px;border-radius:24px;font-size:14px;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+.hint{font-size:13px;color:var(--muted);margin:4px 0 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🍽️ وجباتي الأسبوعية</h1>
+    <div class="sub" id="subtitle"></div>
+  </div>
+  <button class="btn light small" id="btnGen">✨ اقتراح جديد</button>
+</header>
+
+<main>
+  <section class="view active" id="v-week"></section>
+
+  <section class="view" id="v-shop">
+    <div class="card">
+      <h3>🛒 قائمة المشتريات</h3>
+      <p class="hint">تُحسب تلقائياً من وجبات الأسبوع. الرقم يعني عدد الوجبات التي تحتاج هذا المكوّن.</p>
+      <div class="row-btns">
+        <button class="btn ghost small" id="btnShare">📤 مشاركة القائمة</button>
+        <button class="btn danger small" id="btnUncheck">إلغاء كل العلامات</button>
+      </div>
+    </div>
+    <div class="card" id="shopList"></div>
+  </section>
+
+  <section class="view" id="v-set">
+    <div class="card">
+      <h3>👨‍👩‍👧 عدد الأفراد</h3>
+      <label class="row"><span>عدد أفراد العائلة</span>
+        <div class="stepper"><button id="pMinus">−</button><b id="pVal">4</b><button id="pPlus">+</button></div>
+      </label>
+      <p class="hint">يظهر بجانب قائمة المشتريات لتقدير الكميات.</p>
+    </div>
+
+    <div class="card">
+      <h3>🚫 استبعاد أنواع من الوجبات</h3>
+      <div id="excludeBox"></div>
+    </div>
+
+    <div class="card">
+      <h3>🗓️ خيارات الأسبوع</h3>
+      <label class="row"><span>كسكسي يوم الجمعة (إن وُجد)</span><input type="checkbox" class="sw" id="optFriday"></label>
+      <label class="row"><span>تضمين وجبة الفطور</span><input type="checkbox" class="sw" id="optBreakfast"></label>
+    </div>
+
+    <div class="card">
+      <h3>➕ أضف وجبتك الخاصة</h3>
+      <input type="text" id="cName" placeholder="اسم الوجبة مثل: مطبقة">
+      <select id="cSlot">
+        <option value="bld">فطور</option>
+        <option value="ld" selected>غداء وعشاء</option>
+        <option value="l">غداء فقط</option>
+        <option value="d">عشاء فقط</option>
+      </select>
+      <select id="cType"></select>
+      <textarea id="cIng" placeholder="المكونات، افصل بينها بفاصلة. مثال: بطاطا، دجاج، بصل"></textarea>
+      <div class="row-btns"><button class="btn" id="cAdd">إضافة الوجبة</button></div>
+    </div>
+
+    <div class="card">
+      <h3>📚 وجباتك المضافة</h3>
+      <div id="customList"></div>
+    </div>
+
+    <div class="card">
+      <button class="btn danger" id="btnReset">🗑️ مسح كل الخطة</button>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button class="active" data-v="week"><span class="i">📅</span>الأسبوع</button>
+  <button data-v="shop"><span class="i">🛒</span>المشتريات</button>
+  <button data-v="set"><span class="i">⚙️</span>الإعدادات</button>
+</nav>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-h"><h2 id="mTitle"></h2><button class="x" id="mClose">×</button></div>
+    <div class="modal-b" id="mBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ البيانات ============ */
+const DAYS = ["السبت","الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة"];
+// JS getDay(): الأحد=0 ... السبت=6  → نحوّله إلى فهرس أسبوعنا الذي يبدأ بالسبت
+const jsToIdx = d => (d + 1) % 7;
+
+const SLOTS = [
+  {k:"b", label:"الفطور", ico:"🌅"},
+  {k:"l", label:"الغداء", ico:"☀️"},
+  {k:"d", label:"العشاء", ico:"🌙"},
+];
+
+const TYPES = {
+  meat:"لحم", chicken:"دجاج", fish:"سمك", veg:"نباتي", egg:"بيض", other:"أخرى"
+};
+
+// s: الفترات المناسبة، t: النوع، i: المكونات
+const MEALS = [
+  // ---- فطور ----
+  {n:"بيض مقلي مع خبز", s:"b", t:"egg", i:["بيض","خبز","زيت"]},
+  {n:"مسمن مع العسل", s:"b", t:"veg", i:["مسمن","عسل","زبدة"]},
+  {n:"خبز بالزيت والزيتون", s:"b", t:"veg", i:["خبز","زيت زيتون","زيتون"]},
+  {n:"عجة بالخضر", s:"b", t:"egg", i:["بيض","بصل","فلفل","بقدونس"]},
+  {n:"حليب وتمر", s:"b", t:"veg", i:["حليب","تمر","خبز"]},
+  {n:"بغرير مع العسل", s:"b", t:"veg", i:["سميد","خميرة","عسل","زبدة"]},
+  {n:"شاي وكرواسون", s:"b", t:"veg", i:["كرواسون","شاي","جبن"]},
+  {n:"فول مدمس", s:"b", t:"veg", i:["فول","ثوم","ليمون","زيت","خبز"]},
+  {n:"خبز مع الجبن والزيتون", s:"b", t:"veg", i:["خبز","جبن","زيتون","طماطم"]},
+  {n:"رغيف محشو بالتونة", s:"b", t:"fish", i:["خبز","تونة","طماطم","خس"]},
+
+  // ---- غداء / عشاء ----
+  {n:"كسكسي باللحم والخضر", s:"ld", t:"meat", i:["كسكسي","لحم","جزر","كوسة","شلغم","حمص","بصل"], fri:true},
+  {n:"كسكسي بالدجاج", s:"ld", t:"chicken", i:["كسكسي","دجاج","جزر","كوسة","حمص","بصل"], fri:true},
+  {n:"شخشوخة", s:"ld", t:"meat", i:["رقاق","لحم","طماطم","بصل","حمص","فلفل حار"]},
+  {n:"شوربة فريك", s:"ld", t:"meat", i:["فريك","لحم","طماطم","بصل","حمص","كزبرة"]},
+  {n:"حريرة", s:"ld", t:"meat", i:["لحم","عدس","حمص","طماطم","كرفس","بصل"]},
+  {n:"طاجين الزيتون بالدجاج", s:"ld", t:"chicken", i:["دجاج","زيتون","بصل","ثوم","ليمون","زعفران"]},
+  {n:"طاجين الحلو", s:"ld", t:"meat", i:["لحم","برقوق","لوز","سكر","قرفة","بصل"]},
+  {n:"بطاطا بالدجاج في الفرن", s:"ld", t:"chicken", i:["دجاج","بطاطا","ثوم","زيت","فلفل أسود"]},
+  {n:"رشتة", s:"ld", t:"chicken", i:["رشتة","دجاج","حمص","بصل","لفت","سمن"]},
+  {n:"مثوّم", s:"ld", t:"meat", i:["كفتة","ثوم","بقدونس","بيض","فلفل"]},
+  {n:"دولمة", s:"ld", t:"meat", i:["كوسة","بطاطا","لحم مفروم","أرز","بصل","نعناع"]},
+  {n:"لوبيا بيضاء بالصلصة", s:"ld", t:"veg", i:["لوبيا بيضاء","طماطم","ثوم","كزبرة","زيت"]},
+  {n:"عدس بالخضر", s:"ld", t:"veg", i:["عدس","جزر","بطاطا","بصل","ثوم","كمون"]},
+  {n:"شكشوكة", s:"ld", t:"egg", i:["بيض","طماطم","فلفل","بصل","ثوم"]},
+  {n:"مقرونة بالدجاج", s:"ld", t:"chicken", i:["مقرونة","دجاج","طماطم","بصل","جبن"]},
+  {n:"سمك مقلي مع سلطة", s:"ld", t:"fish", i:["سمك","دقيق","ليمون","خس","طماطم","خيار"]},
+  {n:"سمك بالفرن مع خضر", s:"ld", t:"fish", i:["سمك","بطاطا","طماطم","ثوم","ليمون","بقدونس"]},
+  {n:"بوراك بالجبن والبيض", s:"ld", t:"egg", i:["ورق بوراك","جبن","بيض","بقدونس","زيت"]},
+  {n:"كفتة بالصلصة", s:"ld", t:"meat", i:["لحم مفروم","طماطم","بصل","ثوم","كمون"]},
+  {n:"أرز بالخضر والدجاج", s:"ld", t:"chicken", i:["أرز","دجاج","جزر","بازلاء","بصل"]},
+  {n:"بيتزا منزلية", s:"ld", t:"other", i:["دقيق","خميرة","جبن","طماطم","زيتون","تونة"]},
+  {n:"سلطة مشكلة مع تونة", s:"ld", t:"fish", i:["تونة","خس","طماطم","خيار","ذرة","زيتون"]},
+  {n:"شوربة خضر", s:"ld", t:"veg", i:["جزر","بطاطا","كوسة","بصل","ثوم","كرفس"]},
+  {n:"حمص بالطحينة مع خبز", s:"ld", t:"veg", i:["حمص","طحينة","ليمون","ثوم","خبز"]},
+  {n:"برقوق بالدجاج", s:"ld", t:"chicken", i:["دجاج","برقوق","بصل","قرفة","عسل"]},
+  {n:"سباغيتي بولونيز", s:"ld", t:"meat", i:["سباغيتي","لحم مفروم","طماطم","بصل","ثوم"]},
+  {n:"عصبان (مرقاز)", s:"ld", t:"meat", i:["مرقاز","كسكسي","كبد","بصل","فلفل"]},
+];
+
+/* ============ الحالة ============ */
+const STORE = "weeklyMeals.v1";
+let S = load();
+function defaults(){
+  return {persons:4, exclude:[], friday:true, breakfast:true, custom:[], plan:{}, checked:{}};
+}
+function load(){
+  try{ const o = JSON.parse(localStorage.getItem(STORE)); if(o) return Object.assign(defaults(), o); }catch(e){}
+  return defaults();
+}
+function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
+
+/* ============ أدوات ============ */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("show"),1900); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+const rnd = arr => arr[Math.floor(Math.random()*arr.length)];
+
+function allMeals(){
+  const c = S.custom.map(m=>({...m, custom:true}));
+  return MEALS.concat(c);
+}
+function fitsSlot(m, k){
+  if(m.s==="bld") return true;
+  if(m.s==="b") return k==="b";
+  if(m.s==="ld") return k==="l"||k==="d";
+  return m.s===k;
+}
+function pool(k){
+  return allMeals().filter(m=>fitsSlot(m,k) && !S.exclude.includes(m.t));
+}
+function find(name){ return allMeals().find(m=>m.n===name); }
+
+/* ============ توليد الخطة ============ */
+function generate(){
+  const used = new Set();
+  // الوجبات المقفلة تُحسب كمستخدمة
+  for(let d=0; d<7; d++) for(const s of SLOTS){
+    const x = S.plan[d]?.[s.k]; if(x?.locked && x.name) used.add(x.name);
+  }
+  let lastType = {l:null, d:null};
+  for(let d=0; d<7; d++){
+    S.plan[d] = S.plan[d] || {};
+    for(const s of SLOTS){
+      if(s.k==="b" && !S.breakfast){ S.plan[d][s.k] = null; continue; }
+      const cur = S.plan[d][s.k];
+      if(cur?.locked){ continue; }
+      const m = pickFor(d, s.k, used, S.plan[d]);
+      S.plan[d][s.k] = m ? {name:m.n, locked:false} : null;
+      if(m) used.add(m.n);
+    }
+  }
+  save(); renderWeek(); renderShop();
+}
+function pickFor(d, k, used, dayPlan){
+  let p = pool(k);
+  if(!p.length) return null;
+  // الجمعة: كسكسي في الغداء
+  if(d===6 && k==="l" && S.friday){
+    const f = p.filter(m=>m.fri && !used.has(m.n));
+    if(f.length) return rnd(f);
+  }
+  // العشاء: لا يتكرر نوع الغداء في نفس اليوم
+  let cands = p.filter(m=>!used.has(m.n));
+  if(!cands.length) cands = p;       // لو انتهت الخيارات نسمح بالتكرار
+  if(k==="d" && dayPlan?.l){
+    const lt = find(dayPlan.l.name)?.t;
+    const diff = cands.filter(m=>m.t!==lt);
+    if(diff.length) cands = diff;
+  }
+  return rnd(cands);
+}
+function reroll(d,k){
+  const used = new Set();
+  for(let i=0;i<7;i++) for(const s of SLOTS){ const x=S.plan[i]?.[s.k]; if(x?.name && !(i===d&&s.k===k)) used.add(x.name); }
+  const m = pickFor(d,k,used,S.plan[d]);
+  if(!m){ toast("لا توجد وجبات متاحة، راجع الاستبعادات"); return; }
+  S.plan[d][k] = {name:m.n, locked:false};
+  save(); renderWeek(); renderShop();
+}
+
+/* ============ عرض الأسبوع ============ */
+function renderWeek(){
+  const todayIdx = jsToIdx(new Date().getDay());
+  const box = $("#v-week");
+  const hasAny = Object.keys(S.plan).length>0;
+  if(!hasAny){
+    box.innerHTML = `<div class="card empty-note">
+      <div style="font-size:48px">🥘</div>
+      <p>لم تضع خطة بعد.<br>اضغط الزر لاقتراح وجبات الأسبوع.</p>
+      <button class="btn" onclick="generate()">✨ اقترح لي أسبوعاً كاملاً</button></div>`;
+  } else {
+    box.innerHTML = DAYS.map((dn,d)=>{
+      const rows = SLOTS.filter(s=>s.k!=="b" || S.breakfast).map(s=>{
+        const x = S.plan[d]?.[s.k];
+        return `<div class="slot" data-d="${d}" data-k="${s.k}">
+          <div class="ico">${s.ico}</div>
+          <div class="info"><div class="lbl">${s.label}</div>
+            <div class="nm ${x?'':'empty'}">${x?esc(x.name):"اضغط للاختيار"}</div></div>
+          ${x?.locked?'<span class="lock">🔒</span>':''}
+          <button class="dice" data-roll="1" title="تغيير">🎲</button>
+        </div>`;
+      }).join("");
+      return `<div class="day ${d===todayIdx?'today':''}">
+        <div class="day-h"><span>${dn}</span>${d===todayIdx?'<span class="tag">اليوم</span>':''}</div>${rows}</div>`;
+    }).join("");
+  }
+  $("#subtitle").textContent = hasAny ? "اضغط على أي وجبة لتعديلها" : "خطط أسبوعك بسهولة";
+}
+
+/* ============ النافذة المنبثقة ============ */
+function openSlot(d,k){
+  const sl = SLOTS.find(s=>s.k===k);
+  const cur = S.plan[d]?.[k];
+  $("#mTitle").textContent = `${DAYS[d]} — ${sl.label}`;
+  const list = pool(k);
+  const body = $("#mBody");
+  body.innerHTML = `
+    <div class="row-btns">
+      <button class="btn ghost small" id="mRoll">🎲 اقتراح عشوائي</button>
+      ${cur?`<button class="btn ghost small" id="mLock">${cur.locked?"🔓 فك القفل":"🔒 تثبيت الوجبة"}</button>
+      <button class="btn danger small" id="mClear">إفراغ</button>`:""}
+    </div>
+    <p class="hint">اكتب وجبة بنفسك:</p>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="mFree" placeholder="مثلاً: عشاء عند الجدة" style="margin-top:0">
+      <button class="btn" id="mFreeOk">حفظ</button>
+    </div>
+    <p class="hint" style="margin-top:14px">أو اختر من القائمة:</p>
+    ${list.map(m=>`<div class="opt" data-n="${esc(m.n)}"><span>${esc(m.n)}</span><small>${TYPES[m.t]||""}</small></div>`).join("")||'<p class="empty-note">لا توجد خيارات، راجع الاستبعادات في الإعدادات</p>'}
+  `;
+  $("#modalBg").classList.add("show");
+
+  const set = (name,locked)=>{ S.plan[d]=S.plan[d]||{}; S.plan[d][k]={name, locked:!!locked}; save(); closeModal(); renderWeek(); renderShop(); };
+  body.querySelectorAll(".opt").forEach(o=>o.onclick=()=>set(o.dataset.n, cur?.locked));
+  $("#mRoll").onclick=()=>{ closeModal(); reroll(d,k); };
+  $("#mFreeOk").onclick=()=>{ const v=$("#mFree").value.trim(); if(!v){toast("اكتب اسم الوجبة");return;} set(v, cur?.locked); };
+  if(cur){
+    $("#mLock").onclick=()=>{ S.plan[d][k].locked=!cur.locked; save(); closeModal(); renderWeek(); };
+    $("#mClear").onclick=()=>{ S.plan[d][k]=null; save(); closeModal(); renderWeek(); renderShop(); };
+  }
+}
+function closeModal(){ $("#modalBg").classList.remove("show"); }
+
+/* ============ المشتريات ============ */
+function shopItems(){
+  const map = {};
+  for(let d=0; d<7; d++) for(const s of SLOTS){
+    const x = S.plan[d]?.[s.k]; if(!x) continue;
+    const m = find(x.name); if(!m?.i) continue;
+    for(const ing of m.i) map[ing] = (map[ing]||0)+1;
+  }
+  return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0],"ar"));
+}
+function renderShop(){
+  const items = shopItems();
+  const box = $("#shopList");
+  if(!items.length){ box.innerHTML = `<div class="empty-note">لا توجد مكونات بعد. ضع خطة الأسبوع أولاً.</div>`; return; }
+  box.innerHTML = `<p class="hint" style="margin:0 0 6px">لـ ${S.persons} أفراد</p>` +
+    items.map(([n,c])=>`<label class="shop-item ${S.checked[n]?'done':''}">
+      <input type="checkbox" data-n="${esc(n)}" ${S.checked[n]?'checked':''}><span>${esc(n)}</span><em class="cnt">× ${c}</em></label>`).join("");
+  box.querySelectorAll("input").forEach(i=>i.onchange=()=>{ S.checked[i.dataset.n]=i.checked; save(); renderShop(); });
+}
+function shareList(){
+  const items = shopItems().filter(([n])=>!S.checked[n]);
+  if(!items.length){ toast("القائمة فارغة"); return; }
+  const text = "🛒 قائمة المشتريات\n" + items.map(([n,c])=>`• ${n}${c>1?` (×${c})`:""}`).join("\n");
+  if(navigator.share){ navigator.share({text}).catch(()=>{}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(text).then(()=>toast("تم نسخ القائمة ✓")); }
+  else toast("المشاركة غير مدعومة");
+}
+
+/* ============ الإعدادات ============ */
+function renderSettings(){
+  $("#pVal").textContent = S.persons;
+  $("#optFriday").checked = S.friday;
+  $("#optBreakfast").checked = S.breakfast;
+  $("#excludeBox").innerHTML = Object.entries(TYPES).map(([k,v])=>
+    `<label class="row"><span>بدون ${v}</span><input type="checkbox" class="sw" data-ex="${k}" ${S.exclude.includes(k)?'checked':''}></label>`).join("");
+  $("#cType").innerHTML = Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+  $("#customList").innerHTML = S.custom.length ? S.custom.map((m,i)=>
+    `<div class="custom-item"><span>${esc(m.n)} <small style="color:var(--muted)">(${TYPES[m.t]})</small></span>
+     <button class="btn danger small" data-del="${i}">حذف</button></div>`).join("") : '<p class="hint">لم تضف وجبات بعد.</p>';
+
+  $$("[data-ex]").forEach(c=>c.onchange=()=>{
+    const k=c.dataset.ex;
+    S.exclude = c.checked ? [...new Set([...S.exclude,k])] : S.exclude.filter(x=>x!==k);
+    save();
+  });
+  $$("[data-del]").forEach(b=>b.onclick=()=>{ S.custom.splice(+b.dataset.del,1); save(); renderSettings(); });
+}
+
+/* ============ الأحداث ============ */
+$("#btnGen").onclick = ()=>{
+  const hasAny = Object.keys(S.plan).length>0;
+  if(hasAny && !confirm("سيتم استبدال الوجبات غير المثبّتة 🔒 باقتراحات جديدة. متابعة؟")) return;
+  generate(); toast("تم اقتراح أسبوع جديد ✓");
+};
+$("#v-week").addEventListener("click", e=>{
+  const slot = e.target.closest(".slot"); if(!slot) return;
+  const d=+slot.dataset.d, k=slot.dataset.k;
+  if(e.target.closest("[data-roll]")){ e.stopPropagation(); reroll(d,k); return; }
+  openSlot(d,k);
+});
+$("#mClose").onclick = closeModal;
+$("#modalBg").onclick = e=>{ if(e.target.id==="modalBg") closeModal(); };
+$("#pMinus").onclick = ()=>{ S.persons=Math.max(1,S.persons-1); save(); renderSettings(); renderShop(); };
+$("#pPlus").onclick  = ()=>{ S.persons=Math.min(20,S.persons+1); save(); renderSettings(); renderShop(); };
+$("#optFriday").onchange = e=>{ S.friday=e.target.checked; save(); };
+$("#optBreakfast").onchange = e=>{ S.breakfast=e.target.checked; save(); renderWeek(); };
+$("#btnShare").onclick = shareList;
+$("#btnUncheck").onclick = ()=>{ S.checked={}; save(); renderShop(); };
+$("#btnReset").onclick = ()=>{ if(confirm("هل تريد مسح الخطة بالكامل؟")){ S.plan={}; S.checked={}; save(); renderWeek(); renderShop(); toast("تم المسح"); } };
+$("#cAdd").onclick = ()=>{
+  const n=$("#cName").value.trim();
+  if(!n){ toast("اكتب اسم الوجبة"); return; }
+  if(allMeals().some(m=>m.n===n)){ toast("هذه الوجبة موجودة بالفعل"); return; }
+  const ing = $("#cIng").value.split(/[,،\n]/).map(x=>x.trim()).filter(Boolean);
+  S.custom.push({n, s:$("#cSlot").value, t:$("#cType").value, i:ing});
+  save(); $("#cName").value=""; $("#cIng").value=""; renderSettings(); toast("تمت الإضافة ✓");
+};
+$$("nav button").forEach(b=>b.onclick=()=>{
+  $$("nav button").forEach(x=>x.classList.toggle("active",x===b));
+  $$(".view").forEach(v=>v.classList.toggle("active", v.id==="v-"+b.dataset.v));
+  if(b.dataset.v==="shop") renderShop();
+  if(b.dataset.v==="set") renderSettings();
+  window.scrollTo(0,0);
+});
+
+/* ============ تشغيل ============ */
+renderWeek(); renderShop(); renderSettings();
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+</script>
+</body>
+</html>
