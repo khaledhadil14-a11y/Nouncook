@@ -64,7 +64,7 @@ label.row:last-child{border-bottom:0}
 .stepper button{width:34px;height:34px;border-radius:50%;border:0;background:var(--green-l);color:var(--green-d);font-size:20px;font-weight:700}
 .stepper b{min-width:22px;text-align:center}
 input[type=checkbox].sw{width:22px;height:22px;accent-color:var(--green)}
-input[type=text]{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px}
+input[type=text],input[type=number],input[type=time]{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px}
 textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px;min-height:64px}
 select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:#fff;margin-top:6px}
 .custom-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);gap:8px}
@@ -142,6 +142,19 @@ nav button.active{color:var(--green);font-weight:700}
     </div>
 
     <div class="card">
+      <h3>⏰ تذكير وقت الطبخ</h3>
+      <p class="hint" style="margin:0 0 6px">اضبط موعد تقديم كل وجبة، ويحسب التطبيق وقت بدء الطبخ من مدة تحضيرها.</p>
+      <label class="row"><span>🌅 موعد الفطور</span><input type="time" id="t_b" style="width:auto;margin:0"></label>
+      <label class="row"><span>☀️ موعد الغداء</span><input type="time" id="t_l" style="width:auto;margin:0"></label>
+      <label class="row"><span>🌙 موعد العشاء</span><input type="time" id="t_d" style="width:auto;margin:0"></label>
+      <label class="row"><span>نبّهني قبل البدء بـ</span>
+        <select id="lead" style="width:auto;margin:0"><option value="0">في الوقت نفسه</option><option value="10">10 دقائق</option><option value="15">15 دقيقة</option><option value="30">30 دقيقة</option></select></label>
+      <label class="row"><span>🔔 إشعارات التطبيق</span><input type="checkbox" class="sw" id="optNotify"></label>
+      <p class="hint">إشعارات التطبيق تصل غالبًا والتطبيق مفتوح أو في الخلفية، وقد يوقفها الهاتف إذا أُغلق تمامًا. للتنبيه المضمون استعمل تقويم الهاتف:</p>
+      <div class="row-btns"><button class="btn" id="btnIcs">📅 أضف تنبيهات الأسبوع إلى التقويم</button></div>
+      <p class="hint">أعد الضغط بعد تغيير الخطة لتحديث التنبيهات.</p>
+    </div>
+    <div class="card">
       <h3>➕ أضف وجبتك الخاصة</h3>
       <input type="text" id="cName" placeholder="اسم الوجبة مثل: مطبقة">
       <select id="cSlot">
@@ -152,6 +165,7 @@ nav button.active{color:var(--green);font-weight:700}
       </select>
       <select id="cType"></select>
       <textarea id="cIng" placeholder="المكونات، افصل بينها بفاصلة. مثال: بطاطا، دجاج، بصل"></textarea>
+      <input type="number" id="cCook" min="5" max="480" placeholder="مدة الطبخ بالدقائق (اختياري)">
       <div class="row-btns"><button class="btn" id="cAdd">إضافة الوجبة</button></div>
     </div>
 
@@ -244,7 +258,8 @@ const MEALS = [
 const STORE = "weeklyMeals.v1";
 let S = load();
 function defaults(){
-  return {persons:4, exclude:[], friday:true, breakfast:true, custom:[], plan:{}, checked:{}};
+  return {persons:4, exclude:[], friday:true, breakfast:true, custom:[], plan:{}, checked:{},
+          times:{b:"08:00", l:"13:00", d:"20:00"}, lead:10, notify:false, notified:{}};
 }
 function load(){
   try{ const o = JSON.parse(localStorage.getItem(STORE)); if(o) return Object.assign(defaults(), o); }catch(e){}
@@ -339,7 +354,8 @@ function renderWeek(){
         return `<div class="slot" data-d="${d}" data-k="${s.k}">
           <div class="ico">${s.ico}</div>
           <div class="info"><div class="lbl">${s.label}</div>
-            <div class="nm ${x?'':'empty'}">${x?esc(x.name):"اضغط للاختيار"}</div></div>
+            <div class="nm ${x?'':'empty'}">${x?esc(x.name):"اضغط للاختيار"}</div>
+            ${x?`<div class="lbl">🍳 ابدأ الطبخ ${fmt(Math.max(0,startMin(s.k,x.name)))} · ${fmtDur(cookMin(find(x.name),s.k))}</div>`:''}</div>
           ${x?.locked?'<span class="lock">🔒</span>':''}
           <button class="dice" data-roll="1" title="تغيير">🎲</button>
         </div>`;
@@ -418,6 +434,9 @@ function renderSettings(){
   $("#pVal").textContent = S.persons;
   $("#optFriday").checked = S.friday;
   $("#optBreakfast").checked = S.breakfast;
+  $("#optNotify").checked = S.notify;
+  ["b","l","d"].forEach(k => $("#t_"+k).value = S.times[k]);
+  $("#lead").value = String(S.lead);
   $("#excludeBox").innerHTML = Object.entries(TYPES).map(([k,v])=>
     `<label class="row"><span>بدون ${v}</span><input type="checkbox" class="sw" data-ex="${k}" ${S.exclude.includes(k)?'checked':''}></label>`).join("");
   $("#cType").innerHTML = Object.entries(TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
@@ -459,8 +478,9 @@ $("#cAdd").onclick = ()=>{
   if(!n){ toast("اكتب اسم الوجبة"); return; }
   if(allMeals().some(m=>m.n===n)){ toast("هذه الوجبة موجودة بالفعل"); return; }
   const ing = $("#cIng").value.split(/[,،\n]/).map(x=>x.trim()).filter(Boolean);
-  S.custom.push({n, s:$("#cSlot").value, t:$("#cType").value, i:ing});
-  save(); $("#cName").value=""; $("#cIng").value=""; renderSettings(); toast("تمت الإضافة ✓");
+  const c = parseInt($("#cCook").value, 10) || 0;
+  S.custom.push({n, s:$("#cSlot").value, t:$("#cType").value, i:ing, ...(c>0 ? {c:Math.min(c,480)} : {})});
+  save(); $("#cName").value=""; $("#cIng").value=""; $("#cCook").value=""; renderSettings(); toast("تمت الإضافة ✓");
 };
 $$("nav button").forEach(b=>b.onclick=()=>{
   $$("nav button").forEach(x=>x.classList.toggle("active",x===b));
@@ -469,6 +489,99 @@ $$("nav button").forEach(b=>b.onclick=()=>{
   if(b.dataset.v==="set") renderSettings();
   window.scrollTo(0,0);
 });
+
+/* ============ التذكير بوقت الطبخ ============ */
+const pad = n => String(n).padStart(2,"0");
+const COOK_DEFAULT = {meat:90, chicken:60, fish:40, veg:45, egg:20, other:60};   // بالدقائق
+function cookMin(m,k){ if(m && m.c>0) return m.c; if(k==="b") return 15; return COOK_DEFAULT[m && m.t] || 60; }
+function toMin(hm){ const [h,mi] = String(hm||"00:00").split(":").map(Number); return (h||0)*60 + (mi||0); }
+function fmt(min){ min = ((min%1440)+1440)%1440; return pad(Math.floor(min/60)) + ":" + pad(min%60); }
+function fmtDur(n){ return n>=60 ? `${Math.floor(n/60)} س${n%60 ? " "+(n%60)+" د" : ""}` : `${n} د`; }
+function startMin(k,name){ return toMin(S.times[k]) - cookMin(find(name),k); }
+function dateKey(dt){ return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate()); }
+
+async function notify(title, body){
+  toast(title + " — " + body);
+  try{ navigator.vibrate && navigator.vibrate([200,100,200]); }catch(e){}
+  try{
+    if("Notification" in window && Notification.permission==="granted"){
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification(title, {body, icon:"icon-192.png", badge:"icon-192.png", tag:"cook", lang:"ar", dir:"rtl"});
+    }
+  }catch(e){}
+}
+function checkReminders(){
+  if(!S.notify) return;
+  const now = new Date(), d = jsToIdx(now.getDay()), nowMin = now.getHours()*60 + now.getMinutes(), today = dateKey(now);
+  let changed = false;
+  for(const k of Object.keys(S.notified)) if(!k.startsWith(today)){ delete S.notified[k]; changed = true; }
+  for(const s of SLOTS){
+    if(s.k==="b" && !S.breakfast) continue;
+    const x = S.plan[d] && S.plan[d][s.k]; if(!x) continue;
+    const start = Math.max(0, startMin(s.k,x.name)), at = start - (S.lead||0), end = toMin(S.times[s.k]);
+    const id = today+"-"+s.k+"-"+x.name;
+    if(nowMin>=at && nowMin<end && !S.notified[id]){
+      S.notified[id] = true; changed = true;
+      notify("🍳 حان وقت الطبخ — "+s.label, x.name+" · ابدأ عند "+fmt(start));
+    }
+  }
+  if(changed) save();
+}
+async function setNotify(on){
+  if(!on){ S.notify = false; save(); return true; }
+  if(!("Notification" in window)){ toast("الإشعارات غير مدعومة هنا، استعمل التقويم"); return false; }
+  let p = Notification.permission;
+  if(p==="default") p = await Notification.requestPermission();
+  if(p!=="granted"){ toast("لم يُسمح بالإشعارات، فعّلها من إعدادات الهاتف"); return false; }
+  S.notify = true; save(); checkReminders(); return true;
+}
+
+function icsEsc(t){ return String(t).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function buildICS(){
+  const now = new Date(), today = jsToIdx(now.getDay()), nowMin = now.getHours()*60 + now.getMinutes();
+  const stamp = now.toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const L = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Wajabati//AR//","CALSCALE:GREGORIAN"];
+  let n = 0;
+  for(let d=0; d<7; d++){
+    const off = (d - today + 7) % 7;
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate()+off);
+    const ymd = dateKey(day).replace(/-/g,"");
+    const f = m => ymd + "T" + pad(Math.floor(m/60)) + pad(m%60) + "00";
+    for(const s of SLOTS){
+      if(s.k==="b" && !S.breakfast) continue;
+      const x = S.plan[d] && S.plan[d][s.k]; if(!x) continue;
+      const m = find(x.name), st = Math.max(0, startMin(s.k,x.name)), en = Math.max(toMin(S.times[s.k]), st+5);
+      if(off===0 && st-(S.lead||0) <= nowMin) continue;          // فات وقته اليوم
+      L.push("BEGIN:VEVENT","UID:wajabati-"+ymd+"-"+s.k+"@local","DTSTAMP:"+stamp,
+        "DTSTART:"+f(st),"DTEND:"+f(en),
+        "SUMMARY:"+icsEsc("🍳 ابدأ طبخ: "+x.name+" ("+s.label+")"),
+        "DESCRIPTION:"+icsEsc("المكونات: "+(((m && m.i)||[]).join("، ") || "—")),
+        "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+icsEsc("حان وقت الطبخ: "+x.name),"TRIGGER:-PT"+(S.lead||0)+"M","END:VALARM",
+        "END:VEVENT");
+      n++;
+    }
+  }
+  L.push("END:VCALENDAR");
+  return {text:L.join("\r\n")+"\r\n", n};
+}
+async function exportICS(){
+  const {text, n} = buildICS();
+  if(!n){ toast("لا توجد وجبات قادمة لإضافتها"); return; }
+  const file = new File([text], "wajabati.ics", {type:"text/calendar"});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:"تذكيرات الطبخ"}); return; }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = "wajabati.ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("نزل الملف wajabati.ics — افتحه ليضيفه التقويم");
+}
+
+$("#optNotify").onchange = async e => { const ok = await setNotify(e.target.checked); if(!ok) e.target.checked = false; };
+["b","l","d"].forEach(k => $("#t_"+k).onchange = e => { if(e.target.value){ S.times[k] = e.target.value; save(); renderWeek(); } });
+$("#lead").onchange = e => { S.lead = +e.target.value; save(); };
+$("#btnIcs").onclick = exportICS;
+setInterval(checkReminders, 30000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) checkReminders(); });
 
 /* ============ تشغيل ============ */
 renderWeek(); renderShop(); renderSettings();
